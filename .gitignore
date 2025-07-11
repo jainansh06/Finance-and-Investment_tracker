@@ -1,0 +1,11 @@
+# C++ build files
+build/
+*.exe
+*.out
+*.o
+*.a
+*.so
+*.dll
+
+# VS Code
+.vscode/
