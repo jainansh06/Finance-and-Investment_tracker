@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -9,18 +8,10 @@
 #include <numeric>
 #include <random>
 #include <sstream>
-#include <string>
-#include <unordered_map>
 #include <vector>
-
-class Transaction;
-class Investment;
-class Portfolio;
-class FinanceTracker;
 
 enum class TransactionType { INCOME, EXPENSE, INVESTMENT, WITHDRAWAL };
 enum class InvestmentType { STOCK, BOND, MUTUAL_FUND, CRYPTO, ETF };
-
 enum class ExpenseCategory {
   FOOD,
   TRANSPORT,
@@ -32,7 +23,6 @@ enum class ExpenseCategory {
 };
 
 class Date {
-private:
   int day, month, year;
 
 public:
@@ -44,48 +34,31 @@ public:
     month = tm.tm_mon + 1;
     year = tm.tm_year + 1900;
   }
-
   Date(int d, int m, int y) : day(d), month(m), year(y) {}
 
   std::string toString() const {
     return std::to_string(day) + "/" + std::to_string(month) + "/" +
            std::to_string(year);
   }
-
-  bool operator<(const Date &other) const {
-    if (year != other.year)
-      return year < other.year;
-    if (month != other.month)
-      return month < other.month;
-    return day < other.day;
-  }
-
-  bool operator==(const Date &other) const {
-    return day == other.day && month == other.month && year == other.year;
-  }
-
-  std::string serialize() const { // Convert to string for file storage
+  std::string serialize() const {
     return std::to_string(day) + "," + std::to_string(month) + "," +
            std::to_string(year);
   }
+
   static Date deserialize(const std::string &str) {
     std::stringstream ss(str);
     std::string token;
     int d, m, y;
-
     std::getline(ss, token, ',');
     d = std::stoi(token);
     std::getline(ss, token, ',');
     m = std::stoi(token);
     std::getline(ss, token, ',');
     y = std::stoi(token);
-
     return Date(d, m, y);
   }
 };
-
 class Transaction {
-private:
   static int nextId;
   int id;
   std::string description;
@@ -107,50 +80,20 @@ public:
 
   // Getters
   int getId() const { return id; }
-  std::string getDescription() const { return description; }
   double getAmount() const { return amount; }
-  Date getDate() const { return date; }
   TransactionType getType() const { return type; }
   ExpenseCategory getCategory() const { return category; }
 
-  // Setters
-  void setDescription(const std::string &desc) { description = desc; }
-  void setAmount(double amt) { amount = amt; }
-  void setCategory(ExpenseCategory cat) { category = cat; }
-
   std::string typeToString() const {
-    switch (type) {
-    case TransactionType::INCOME:
-      return "Income";
-    case TransactionType::EXPENSE:
-      return "Expense";
-    case TransactionType::INVESTMENT:
-      return "Investment";
-    case TransactionType::WITHDRAWAL:
-      return "Withdrawal";
-    default:
-      return "Unknown";
-    }
+    const char *types[] = {"Income", "Expense", "Investment", "Withdrawal"};
+    return types[static_cast<int>(type)];
   }
+
   std::string categoryToString() const {
-    switch (category) {
-    case ExpenseCategory::FOOD:
-      return "Food";
-    case ExpenseCategory::TRANSPORT:
-      return "Transport";
-    case ExpenseCategory::UTILITIES:
-      return "Utilities";
-    case ExpenseCategory::ENTERTAINMENT:
-      return "Entertainment";
-    case ExpenseCategory::HEALTHCARE:
-      return "Healthcare";
-    case ExpenseCategory::EDUCATION:
-      return "Education";
-    case ExpenseCategory::OTHER:
-      return "Other";
-    default:
-      return "Unknown";
-    }
+    const char *categories[] = {"Food",          "Transport",  "Utilities",
+                                "Entertainment", "Healthcare", "Education",
+                                "Other"};
+    return categories[static_cast<int>(category)];
   }
 
   void display() const {
@@ -160,53 +103,44 @@ public:
               << categoryToString() << std::setw(12) << date.toString()
               << std::endl;
   }
+
   std::string serialize() const {
     return std::to_string(id) + "," + description + "," +
            std::to_string(amount) + "," + date.serialize() + "," +
            std::to_string(static_cast<int>(type)) + "," +
            std::to_string(static_cast<int>(category));
   }
+
   static Transaction deserialize(const std::string &str) {
     std::stringstream ss(str);
     std::string token;
-
     std::getline(ss, token, ',');
     int id = std::stoi(token);
-
     std::getline(ss, token, ',');
     std::string desc = token;
-
     std::getline(ss, token, ',');
     double amount = std::stod(token);
 
-    std::getline(ss, token, ',');
-    std::string dateStr = token + ",";
-    std::getline(ss, token, ',');
-    dateStr += token + ",";
-    std::getline(ss, token, ',');
-    dateStr += token;
+    std::string dateStr;
+    for (int i = 0; i < 3; i++) {
+      std::getline(ss, token, ',');
+      dateStr += token + (i < 2 ? "," : "");
+    }
     Date date = Date::deserialize(dateStr);
 
     std::getline(ss, token, ',');
     TransactionType type = static_cast<TransactionType>(std::stoi(token));
-
     std::getline(ss, token, ',');
     ExpenseCategory category = static_cast<ExpenseCategory>(std::stoi(token));
 
-    Transaction t(desc, amount, date, type, category);
-    return t;
+    return Transaction(desc, amount, date, type, category);
   }
 };
 int Transaction::nextId = 1;
-
 class Investment {
-private:
-  std::string symbol;
-  std::string name;
+  std::string symbol, name;
   InvestmentType type;
-  double quantity;
-  double purchasePrice;
-  double currentPrice;
+  double quantity, purchasePrice, currentPrice;
   Date purchaseDate;
 
 public:
@@ -217,16 +151,9 @@ public:
 
   // Getters
   std::string getSymbol() const { return symbol; }
-  std::string getName() const { return name; }
   InvestmentType getType() const { return type; }
-  double getQuantity() const { return quantity; }
-  double getPurchasePrice() const { return purchasePrice; }
   double getCurrentPrice() const { return currentPrice; }
-  Date getPurchaseDate() const { return purchaseDate; }
-
-  // Setters
   void setCurrentPrice(double price) { currentPrice = price; }
-  void addQuantity(double qty) { quantity += qty; }
 
   double getCurrentValue() const { return quantity * currentPrice; }
   double getInitialValue() const { return quantity * purchasePrice; }
@@ -236,20 +163,8 @@ public:
   }
 
   std::string typeToString() const {
-    switch (type) {
-    case InvestmentType::STOCK:
-      return "Stock";
-    case InvestmentType::BOND:
-      return "Bond";
-    case InvestmentType::MUTUAL_FUND:
-      return "Mutual Fund";
-    case InvestmentType::CRYPTO:
-      return "Crypto";
-    case InvestmentType::ETF:
-      return "ETF";
-    default:
-      return "Unknown";
-    }
+    const char *types[] = {"Stock", "Bond", "Mutual Fund", "Crypto", "ETF"};
+    return types[static_cast<int>(type)];
   }
 
   void display() const {
@@ -268,34 +183,28 @@ public:
            std::to_string(purchasePrice) + "," + std::to_string(currentPrice) +
            "," + purchaseDate.serialize();
   }
+
   static Investment deserialize(const std::string &str) {
     std::stringstream ss(str);
     std::string token;
-
     std::getline(ss, token, ',');
     std::string symbol = token;
-
     std::getline(ss, token, ',');
     std::string name = token;
-
     std::getline(ss, token, ',');
     InvestmentType type = static_cast<InvestmentType>(std::stoi(token));
-
     std::getline(ss, token, ',');
     double quantity = std::stod(token);
-
     std::getline(ss, token, ',');
     double purchasePrice = std::stod(token);
-
     std::getline(ss, token, ',');
     double currentPrice = std::stod(token);
 
-    std::getline(ss, token, ',');
-    std::string dateStr = token + ",";
-    std::getline(ss, token, ',');
-    dateStr += token + ",";
-    std::getline(ss, token, ',');
-    dateStr += token;
+    std::string dateStr;
+    for (int i = 0; i < 3; i++) {
+      std::getline(ss, token, ',');
+      dateStr += token + (i < 2 ? "," : "");
+    }
     Date date = Date::deserialize(dateStr);
 
     Investment inv(symbol, name, type, quantity, purchasePrice, date);
@@ -303,9 +212,7 @@ public:
     return inv;
   }
 };
-
 class Portfolio {
-private:
   std::vector<std::unique_ptr<Investment>> investments;
   std::string name;
 
@@ -315,30 +222,8 @@ public:
   void addInvestment(std::unique_ptr<Investment> investment) {
     investments.push_back(std::move(investment));
   }
-  bool
-  removeInvestment(const std::string &symbol) { // Remove investment by symbol
-    auto it = std::find_if(investments.begin(), investments.end(),
-                           [&symbol](const std::unique_ptr<Investment> &inv) {
-                             return inv->getSymbol() == symbol;
-                           });
 
-    if (it != investments.end()) {
-      investments.erase(it);
-      return true;
-    }
-    return false;
-  }
-  Investment *
-  getInvestment(const std::string &symbol) { // Get investment by symbol
-    auto it = std::find_if(investments.begin(), investments.end(),
-                           [&symbol](const std::unique_ptr<Investment> &inv) {
-                             return inv->getSymbol() == symbol;
-                           });
-
-    return (it != investments.end()) ? it->get() : nullptr;
-  }
-
-  double getTotalValue() const { // portfolio metrics
+  double getTotalValue() const {
     return std::accumulate(
         investments.begin(), investments.end(), 0.0,
         [](double sum, const std::unique_ptr<Investment> &inv) {
@@ -360,23 +245,7 @@ public:
                         [](double sum, const std::unique_ptr<Investment> &inv) {
                           return sum + inv->getInitialValue();
                         });
-
     return totalInitial > 0 ? (getTotalGainLoss() / totalInitial) * 100.0 : 0.0;
-  }
-
-  // analysis
-  std::map<InvestmentType, double> getDiversification() const {
-    std::map<InvestmentType, double> distribution;
-    double totalValue = getTotalValue();
-
-    for (const auto &inv : investments) {
-      distribution[inv->getType()] += inv->getCurrentValue();
-    }
-    for (auto &pair : distribution) {
-      pair.second = (pair.second / totalValue) * 100.0;
-    }
-
-    return distribution;
   }
 
   void display() const {
@@ -398,39 +267,30 @@ public:
     std::cout << "Total Gain/Loss: ₹" << getTotalGainLoss() << " ("
               << std::setprecision(1) << getTotalGainLossPercentage() << "%)"
               << std::endl;
-
-    std::cout << "\nDiversification:" << std::endl;
-    auto diversification = getDiversification();
-    for (const auto &pair : diversification) {
-      std::cout << "  " << static_cast<int>(pair.first) << ": "
-                << std::setprecision(1) << pair.second << "%" << std::endl;
-    }
   }
 
-  void updateMarketPrices() { // market change simulation
+  void updateMarketPrices() {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(-0.05, 0.05); // -5% to +5% change
+    std::uniform_real_distribution<> dis(-0.05, 0.05);
 
     for (auto &inv : investments) {
       double change = dis(gen);
       double newPrice = inv->getCurrentPrice() * (1 + change);
-      inv->setCurrentPrice(std::max(0.01, newPrice)); // Minimum price of 0.01rs
+      inv->setCurrentPrice(std::max(0.01, newPrice));
     }
   }
-  size_t getInvestmentCount() const { return investments.size(); }
 
+  size_t getInvestmentCount() const { return investments.size(); }
   Investment *getInvestmentAt(size_t index) {
     return (index < investments.size()) ? investments[index].get() : nullptr;
   }
 };
 
 class FinanceTracker {
-private:
   std::vector<std::unique_ptr<Transaction>> transactions;
   std::unique_ptr<Portfolio> portfolio;
-  std::string dataFile;
-  std::string portfolioFile;
+  std::string dataFile, portfolioFile;
 
 public:
   FinanceTracker(const std::string &dataFileName = "finance_data.csv",
@@ -448,15 +308,16 @@ public:
     transactions.push_back(
         std::make_unique<Transaction>(description, amount, type, category));
   }
+
   void addInvestment(const std::string &symbol, const std::string &name,
                      InvestmentType type, double quantity, double price) {
     auto investment =
         std::make_unique<Investment>(symbol, name, type, quantity, price);
     portfolio->addInvestment(std::move(investment));
-
     addTransaction("Investment: " + symbol, quantity * price,
                    TransactionType::INVESTMENT);
   }
+
   double getTotalIncome() const {
     return std::accumulate(
         transactions.begin(), transactions.end(), 0.0,
@@ -465,6 +326,7 @@ public:
                  (t->getType() == TransactionType::INCOME ? t->getAmount() : 0);
         });
   }
+
   double getTotalExpenses() const {
     return std::accumulate(
         transactions.begin(), transactions.end(), 0.0,
@@ -474,6 +336,7 @@ public:
                             : 0);
         });
   }
+
   double getTotalInvestments() const {
     return std::accumulate(
         transactions.begin(), transactions.end(), 0.0,
@@ -483,20 +346,18 @@ public:
                             : 0);
         });
   }
+
   double getNetWorth() const {
     return getTotalIncome() - getTotalExpenses() + portfolio->getTotalValue();
   }
 
-  // expense report
   std::map<ExpenseCategory, double> getExpenseByCategory() const {
     std::map<ExpenseCategory, double> expenses;
-
     for (const auto &t : transactions) {
       if (t->getType() == TransactionType::EXPENSE) {
         expenses[t->getCategory()] += t->getAmount();
       }
     }
-
     return expenses;
   }
 
@@ -507,7 +368,6 @@ public:
               << "Type" << std::setw(15) << "Category" << std::setw(12)
               << "Date" << std::endl;
     std::cout << std::string(80, '-') << std::endl;
-
     for (const auto &t : transactions) {
       t->display();
     }
@@ -526,20 +386,18 @@ public:
     std::cout << "\n=== Expense Breakdown ===" << std::endl;
     auto expenseBreakdown = getExpenseByCategory();
     for (const auto &pair : expenseBreakdown) {
-      std::cout << "  " << static_cast<int>(pair.first) << ": $" << pair.second
+      std::cout << "  " << static_cast<int>(pair.first) << ": ₹" << pair.second
                 << std::endl;
     }
   }
 
   void displayPortfolio() const { portfolio->display(); }
-
   void updateMarketPrices() {
     portfolio->updateMarketPrices();
     std::cout << "Market prices updated!" << std::endl;
   }
 
   void saveData() const {
-    // Save transactions
     std::ofstream file(dataFile);
     if (file.is_open()) {
       for (const auto &t : transactions) {
@@ -561,7 +419,6 @@ public:
   }
 
   void loadData() {
-    // Load transactions
     std::ifstream file(dataFile);
     if (file.is_open()) {
       std::string line;
@@ -597,7 +454,6 @@ public:
 };
 
 class Menu {
-private:
   FinanceTracker tracker;
 
 public:
@@ -605,9 +461,14 @@ public:
 
   void run() {
     int choice;
-
     do {
-      displayMenu();
+      std::cout << "\n=== Personal Finance & Investment Tracker ==="
+                << std::endl;
+      std::cout << "1. Add Transaction\n2. Add Investment\n3. View "
+                   "Transactions\n4. View Portfolio\n5. View Financial "
+                   "Summary\n6. Update Market Prices\n7. Exit"
+                << std::endl;
+      std::cout << "Enter your choice: ";
       std::cin >> choice;
 
       switch (choice) {
@@ -642,23 +503,10 @@ public:
         std::cin.ignore();
         std::cin.get();
       }
-
     } while (choice != 7);
   }
 
 private:
-  void displayMenu() {
-    std::cout << "\n=== Personal Finance & Investment Tracker ===" << std::endl;
-    std::cout << "1. Add Transaction" << std::endl;
-    std::cout << "2. Add Investment" << std::endl;
-    std::cout << "3. View Transactions" << std::endl;
-    std::cout << "4. View Portfolio" << std::endl;
-    std::cout << "5. View Financial Summary" << std::endl;
-    std::cout << "6. Update Market Prices" << std::endl;
-    std::cout << "7. Exit" << std::endl;
-    std::cout << "Enter your choice: ";
-  }
-
   void addTransaction() {
     std::string description;
     double amount;
@@ -667,17 +515,15 @@ private:
     std::cout << "\nEnter transaction description: ";
     std::cin.ignore();
     std::getline(std::cin, description);
-
     std::cout << "Enter amount: ₹";
     std::cin >> amount;
-
     std::cout
         << "Select type (1-Income, 2-Expense, 3-Investment, 4-Withdrawal): ";
     std::cin >> typeChoice;
 
     TransactionType type = static_cast<TransactionType>(typeChoice - 1);
-
     ExpenseCategory category = ExpenseCategory::OTHER;
+
     if (type == TransactionType::EXPENSE) {
       std::cout << "Select category (1-Food, 2-Transport, 3-Utilities, "
                    "4-Entertainment, 5-Healthcare, 6-Education, 7-Other): ";
@@ -696,23 +542,18 @@ private:
 
     std::cout << "\nEnter investment symbol: ";
     std::cin >> symbol;
-
     std::cout << "Enter investment name: ";
     std::cin.ignore();
     std::getline(std::cin, name);
-
     std::cout
         << "Select type (1-Stock, 2-Bond, 3-Mutual Fund, 4-Crypto, 5-ETF): ";
     std::cin >> typeChoice;
-
     std::cout << "Enter quantity: ";
     std::cin >> quantity;
-
     std::cout << "Enter purchase price per unit: ₹";
     std::cin >> price;
 
     InvestmentType type = static_cast<InvestmentType>(typeChoice - 1);
-
     tracker.addInvestment(symbol, name, type, quantity, price);
     std::cout << "Investment added successfully!" << std::endl;
   }
